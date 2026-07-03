@@ -96,8 +96,8 @@ export default function App() {
       {route.page === "record" && <Record />}
 
       <footer className="siteFooter">
-        Kept by hand since April 2017. Nine years of bar tables, basements, and lake houses.{" "}
-        <a href="#/story" onClick={(e) => { e.preventDefault(); navigate("#/story"); }}>Read how it started</a>.
+        Kept by hand since April 2017. Nine years of bar tables, basements, lake houses, and pool
+        halls. <a href="#/story" onClick={(e) => { e.preventDefault(); navigate("#/story"); }}>Read how it started</a>.
       </footer>
     </div>
   );

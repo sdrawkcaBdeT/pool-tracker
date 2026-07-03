@@ -7,6 +7,7 @@ import {
   WIN_TYPE_LABELS,
   WIN_TYPE_ORDER,
   dateLabel,
+  pValue,
   pct,
   record,
   signedPts,
@@ -50,10 +51,11 @@ function formLine(data) {
 
 function breakLine(b) {
   if (b.advantage === null) return "Not enough games on one side of the break to say anything yet.";
+  const p = pValue(b.p_value);
   const base = `I win ${pct(b.me_breaking.win_rate, 1)} of games when I break and ${pct(
     b.them_breaking.win_rate,
     1
-  )} when I don't. The break is worth ${signedPts(b.advantage)} here.`;
+  )} when I don't. The break is worth ${signedPts(b.advantage)} here${p ? ` (${p}, recalculated as games come in)` : ""}.`;
   const n = b.me_breaking.games + b.them_breaking.games;
   return n < 40 ? `${base} Thin sample though, so call it a lean, not a fact.` : base;
 }

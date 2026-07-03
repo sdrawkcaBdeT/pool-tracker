@@ -10,6 +10,12 @@ export const signedPts = (value) =>
 
 export const record = (r) => `${r.wins}–${r.losses}`;
 
+export const pValue = (p) => {
+  if (p === null || p === undefined) return null;
+  if (p < 0.0001) return "p < 0.0001";
+  return `p ≈ ${p.toPrecision(1)}`;
+};
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export const dateLabel = (iso) => {

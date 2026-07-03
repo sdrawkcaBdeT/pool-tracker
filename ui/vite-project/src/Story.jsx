@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "./api.js";
 import { Section } from "./components.jsx";
 import { Columns } from "./charts.jsx";
-import { pct, record, signedPts } from "./format.js";
+import { pValue, pct, record, signedPts } from "./format.js";
 
 function ThenNow({ thenLabel, thenValue, thenCtx, nowLabel, nowValue, nowCtx }) {
   return (
@@ -69,9 +69,9 @@ export default function Story() {
           </p>
           <p>
             Nine years later the spreadsheet hit 610 games, and it outgrew Excel. One rule has
-            never changed: not every game gets tracked. If I tell my opponent before the break
-            that it's going in the stats, it goes in the stats, however it ends. This site is
-            the same notebook with better plumbing.
+            never changed: not every game gets tracked. If I tell my opponents before the break
+            (or lag) that it's going in the stats, it goes in the stats, however it ends. This
+            site is the same notebook with better plumbing.
           </p>
         </div>
       </Section>
@@ -133,16 +133,17 @@ export default function Story() {
           >
             <p style={{ margin: 0 }}>
               The question that started all of this, answered for good. Across every 8-ball game
-              I've recorded, breaking is worth <b>{signedPts(bNow.advantage)}</b> of win rate.
-              The regression agreed years ago. The break is real.
+              in the book, breaking is worth <b>{signedPts(bNow.advantage)}</b> of win rate, and
+              the p-value below recalculates every time a new game goes in. The break is real,
+              and it gets more real every session.
             </p>
             <ThenNow
               thenLabel="all games, at the report"
               thenValue={signedPts(bThen.advantage)}
-              thenCtx={`breaking ${pct(bThen.me_breaking.win_rate, 1)}, receiving ${pct(bThen.them_breaking.win_rate, 1)}`}
+              thenCtx={`breaking ${pct(bThen.me_breaking.win_rate, 1)}, receiving ${pct(bThen.them_breaking.win_rate, 1)} (${pValue(bThen.p_value)})`}
               nowLabel="all games, now"
               nowValue={signedPts(bNow.advantage)}
-              nowCtx={`breaking ${pct(bNow.me_breaking.win_rate, 1)}, receiving ${pct(bNow.them_breaking.win_rate, 1)}`}
+              nowCtx={`breaking ${pct(bNow.me_breaking.win_rate, 1)}, receiving ${pct(bNow.them_breaking.win_rate, 1)} (${pValue(bNow.p_value)})`}
             />
           </Claim>
 

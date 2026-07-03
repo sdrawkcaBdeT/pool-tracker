@@ -9,6 +9,7 @@ say so via the game_types block.
 from __future__ import annotations
 
 import datetime as dt
+import math
 from collections import Counter
 from dataclasses import dataclass
 
@@ -209,7 +210,24 @@ def _break_stats(eight_ball: list[LogRow]) -> dict:
         if mine["win_rate"] is not None and theirs["win_rate"] is not None
         else None
     )
-    return {"me_breaking": mine, "them_breaking": theirs, "advantage": advantage}
+
+    # Two-proportion z-test (two-sided). With one binary predictor this is the
+    # same inference a logistic regression's Wald test gives, so "compare the
+    # percentages" and "run the regression" agree; this adds the p-value.
+    p_value = None
+    if mine["games"] and theirs["games"]:
+        pooled = (mine["wins"] + theirs["wins"]) / (mine["games"] + theirs["games"])
+        variance = pooled * (1 - pooled) * (1 / mine["games"] + 1 / theirs["games"])
+        if variance > 0:
+            z = (mine["win_rate"] - theirs["win_rate"]) / math.sqrt(variance)
+            p_value = math.erfc(abs(z) / math.sqrt(2))
+
+    return {
+        "me_breaking": mine,
+        "them_breaking": theirs,
+        "advantage": advantage,
+        "p_value": p_value,
+    }
 
 
 def _by_year(rows: list[LogRow]) -> list[dict]:
