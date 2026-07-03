@@ -285,16 +285,39 @@ def build_dashboard(rows: list[LogRow], scope_type: str, key: str | None) -> dic
 
 
 def build_scopes(rows: list[LogRow]) -> dict:
-    opponents = Counter(name for r in rows for name in r.opponents)
-    venues = Counter(r.venue for r in rows)
-    years = Counter(str(r.date.year) for r in rows)
+    """Per-slice records for the browse boards, not just counts."""
+
+    def slice_record(group: list[LogRow]) -> dict:
+        wins = sum(r.win for r in group)
+        return {
+            "games": len(group),
+            "wins": wins,
+            "losses": len(group) - wins,
+            "win_rate": wins / len(group) if group else None,
+            "first_date": min(r.date for r in group).isoformat(),
+            "last_date": max(r.date for r in group).isoformat(),
+        }
+
+    opponents: dict[str, list[LogRow]] = {}
+    venues: dict[str, list[LogRow]] = {}
+    years: dict[str, list[LogRow]] = {}
+    for r in rows:
+        for name in r.opponents:
+            opponents.setdefault(name, []).append(r)
+        venues.setdefault(r.venue, []).append(r)
+        years.setdefault(str(r.date.year), []).append(r)
+
     return {
         "opponents": [
-            {"name": name, "games": games} for name, games in opponents.most_common()
+            {"name": name, **slice_record(group)}
+            for name, group in sorted(opponents.items(), key=lambda kv: -len(kv[1]))
         ],
-        "venues": [{"name": name, "games": games} for name, games in venues.most_common()],
+        "venues": [
+            {"name": name, **slice_record(group)}
+            for name, group in sorted(venues.items(), key=lambda kv: -len(kv[1]))
+        ],
         "years": [
-            {"year": year, "games": games} for year, games in sorted(years.items())
+            {"year": year, **slice_record(group)} for year, group in sorted(years.items())
         ],
     }
 

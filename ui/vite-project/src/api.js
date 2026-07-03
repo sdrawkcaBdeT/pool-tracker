@@ -38,10 +38,3 @@ export const api = {
   deleteGame: (id) => request(`/api/record/games/${id}`, { method: "DELETE" }),
 };
 
-export const pct = (value, digits = 1) =>
-  value === null || value === undefined ? "–" : `${(value * 100).toFixed(digits)}%`;
-
-export const signedPts = (value) =>
-  value === null || value === undefined
-    ? "–"
-    : `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)} pts`;

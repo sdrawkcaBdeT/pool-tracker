@@ -1,13 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "./api.js";
+import { Ball, Section } from "./components.jsx";
+import { WIN_TYPE_LABELS } from "./format.js";
 
-const WIN_TYPES = [
-  ["regulation", "regulation"],
-  ["early_8", "early 8"],
-  ["scratch_on_8", "scratch on 8"],
-  ["wrong_pocket", "wrong pocket"],
-  ["win_on_break", "win on break"],
-];
+const WIN_TYPES = Object.keys(WIN_TYPE_LABELS);
 
 const todayISO = () => {
   const now = new Date();
@@ -15,18 +11,18 @@ const todayISO = () => {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 };
 
-function ChipRow({ options, selected, onToggle, allowNew, newPlaceholder }) {
+function ChipRow({ options, selected, onToggle, allowNew, newPlaceholder, labelFor }) {
   const [draft, setDraft] = useState("");
   return (
-    <div className="chips">
+    <div className="chipRow">
       {options.map((name) => (
         <button
           key={name}
           type="button"
-          className={`chip ${selected.includes(name) ? "active" : ""}`}
+          className={`chip ${selected.includes(name) ? "on" : ""}`}
           onClick={() => onToggle(name)}
         >
-          {name}
+          {labelFor ? labelFor(name) : name}
         </button>
       ))}
       {allowNew && (
@@ -42,7 +38,6 @@ function ChipRow({ options, selected, onToggle, allowNew, newPlaceholder }) {
               setDraft("");
             }
           }}
-          style={{ width: 110, padding: "6px 10px", borderRadius: 999, border: "1px solid var(--border)", background: "var(--surface-1)", color: "var(--text-primary)", fontSize: 13, fontFamily: "inherit" }}
         />
       )}
     </div>
@@ -51,15 +46,16 @@ function ChipRow({ options, selected, onToggle, allowNew, newPlaceholder }) {
 
 function BallRow({ value, onChange }) {
   return (
-    <div className="ballrow">
+    <div className="ballRow">
       {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
         <button
           key={n}
           type="button"
-          className={`ball ${value === n ? "selected" : ""}`}
+          className={`ballBtn ${value === n ? "on" : ""}`}
           onClick={() => onChange(n)}
+          aria-pressed={value === n}
         >
-          {n}
+          <Ball n={n} />
         </button>
       ))}
     </div>
@@ -119,7 +115,7 @@ export default function Record() {
       setMode("owner");
       setPin("");
     } catch (err) {
-      setError(err.status === 401 ? "Wrong PIN." : err.message);
+      setError(err.status === 401 ? "That's not it." : err.message);
     }
   };
 
@@ -165,7 +161,8 @@ export default function Record() {
   const activeBreaker = breaker && breakerOptions.includes(breaker) ? breaker : suggestedBreaker;
 
   const cutthroatPeople = [me, ...opponents];
-  const effectiveResult = gameType === "cutthroat" ? (ctWinner === me ? "win" : ctWinner ? "loss" : null) : result;
+  const effectiveResult =
+    gameType === "cutthroat" ? (ctWinner === me ? "win" : ctWinner ? "loss" : null) : result;
 
   const canSave =
     session &&
@@ -203,10 +200,7 @@ export default function Record() {
       finish_places:
         gameType === "cutthroat"
           ? Object.fromEntries(
-              cutthroatPeople.map((name) => [
-                name,
-                name === ctWinner ? 1 : name === ctFirstOut ? 3 : 2,
-              ])
+              cutthroatPeople.map((name) => [name, name === ctWinner ? 1 : name === ctFirstOut ? 3 : 2])
             )
           : {},
       notes,
@@ -258,31 +252,26 @@ export default function Record() {
     }
   };
 
-  if (mode === "loading") return <p className="sub">Loading…</p>;
+  if (mode === "loading") return <p className="muted">Loading…</p>;
 
   if (mode === "observer") {
     return (
       <div className="record">
-        <div className="card" style={{ marginTop: 10 }}>
-          <h3>Owner login</h3>
-          <p className="sub">Recording is owner-only. Viewing everything else needs no login.</p>
+        <Section eyebrow="Owner only" title="Recording">
+          <p className="sectionCopy">
+            Recording is just for me. Everything else on the site is open, no login needed.
+          </p>
           <form onSubmit={login}>
             <div className="field">
               <label>PIN</label>
-              <input
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                autoFocus
-              />
+              <input type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)} autoFocus />
             </div>
             {error && <p className="error">{error}</p>}
             <button className="savebtn" type="submit" disabled={!pin}>
               Log in
             </button>
           </form>
-        </div>
+        </Section>
       </div>
     );
   }
@@ -300,9 +289,7 @@ export default function Record() {
   return (
     <div className="record">
       {!session && (
-        <div className="card" style={{ marginTop: 10 }}>
-          <h3>Start a session</h3>
-          <p className="sub">A session is one day of play at one venue.</p>
+        <Section eyebrow="New session" title="Where are we playing?">
           <div className="field">
             <label>Date</label>
             <input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} />
@@ -319,33 +306,30 @@ export default function Record() {
           </div>
           {error && <p className="error">{error}</p>}
           <button className="savebtn" onClick={startSession} disabled={!sessionVenue || !sessionDate}>
-            Start session
+            Rack 'em
           </button>
-        </div>
+        </Section>
       )}
 
       {session && (
         <>
-          <div className="card" style={{ marginTop: 10 }}>
-            <h3>
-              {session.date} · {session.venue}
-            </h3>
-            <p className="sub">
-              Session so far: {tally[0]}–{tally[1]}
-              {" · "}
-              <a
-                href="#/record"
-                onClick={(e) => {
-                  e.preventDefault();
+          <Section
+            eyebrow={`${session.date} · ${session.venue}`}
+            title={`Session: ${tally[0]}–${tally[1]}`}
+            action={
+              <button
+                type="button"
+                className="backButton"
+                onClick={() => {
                   setSession(null);
                   setGames([]);
                   resetGameForm();
                 }}
               >
-                switch session
-              </a>
-            </p>
-
+                Switch session
+              </button>
+            }
+          >
             <div className="field">
               <label>Game type</label>
               <ChipRow
@@ -378,7 +362,12 @@ export default function Record() {
               <div className="field">
                 <label>My teammate</label>
                 <ChipRow
-                  options={[...new Set([...playerNames.filter((n) => !opponents.includes(n)).slice(0, 8), ...(teammate ? [teammate] : [])])]}
+                  options={[
+                    ...new Set([
+                      ...playerNames.filter((n) => !opponents.includes(n)).slice(0, 8),
+                      ...(teammate ? [teammate] : []),
+                    ]),
+                  ]}
                   selected={teammate ? [teammate] : []}
                   onToggle={(name) => setTeammate((current) => (current === name ? null : name))}
                   allowNew
@@ -394,34 +383,35 @@ export default function Record() {
                   <div className="bigbtns">
                     <button
                       type="button"
-                      className={`bigbtn win ${result === "win" ? "selected" : ""}`}
+                      className={`bigbtn win ${result === "win" ? "on" : ""}`}
                       onClick={() => setResult("win")}
                     >
-                      W
+                      Won
                     </button>
                     <button
                       type="button"
-                      className={`bigbtn loss ${result === "loss" ? "selected" : ""}`}
+                      className={`bigbtn loss ${result === "loss" ? "on" : ""}`}
                       onClick={() => setResult("loss")}
                     >
-                      L
+                      Lost
                     </button>
                   </div>
                 </div>
 
                 <div className="field">
-                  <label>Win type</label>
+                  <label>How it ended</label>
                   <ChipRow
-                    options={WIN_TYPES.map(([value]) => value)}
+                    options={WIN_TYPES}
                     selected={[winType]}
                     onToggle={(t) => setWinType(t)}
+                    labelFor={(t) => WIN_TYPE_LABELS[t]}
                   />
                 </div>
 
                 <div className="field">
                   <label>
-                    Loser's balls left{" "}
-                    {result ? `(${result === "win" ? opponents.join("/") || "them" : "me"})` : ""}
+                    Loser's balls left
+                    {result ? ` (${result === "win" ? opponents.join("/") || "them" : "me"})` : ""}
                   </label>
                   <BallRow value={loserBalls} onChange={setLoserBalls} />
                 </div>
@@ -457,12 +447,8 @@ export default function Record() {
             )}
 
             <div className="field">
-              <label>Breaker (prefilled: last winner)</label>
-              <ChipRow
-                options={breakerOptions}
-                selected={[activeBreaker]}
-                onToggle={(name) => setBreaker(name)}
-              />
+              <label>Breaker (prefilled with last winner)</label>
+              <ChipRow options={breakerOptions} selected={[activeBreaker]} onToggle={(name) => setBreaker(name)} />
             </div>
 
             <div className="field">
@@ -472,32 +458,30 @@ export default function Record() {
 
             {error && <p className="error">{error}</p>}
             <button className="savebtn" onClick={save} disabled={!canSave}>
-              {editingId ? `Update game` : "Save game"}
+              {editingId ? "Update game" : "Save game"}
             </button>
             {editingId && (
-              <p className="sub" style={{ marginTop: 8 }}>
-                editing game {games.find((g) => g.id === editingId)?.seq} ·{" "}
+              <p className="muted" style={{ margin: "8px 0 0" }}>
+                editing game {games.find((g) => g.id === editingId)?.seq}.{" "}
                 <a
                   href="#/record"
+                  style={{ color: "inherit" }}
                   onClick={(e) => {
                     e.preventDefault();
                     resetGameForm();
                   }}
                 >
-                  cancel
+                  never mind
                 </a>
               </p>
             )}
-          </div>
+          </Section>
 
-          <div className="card gamelist" style={{ marginTop: 14 }}>
-            <h3>This session</h3>
-            {!games.length && <p className="sub">No games yet.</p>}
+          <Section eyebrow="This session" title={`${games.length} game${games.length === 1 ? "" : "s"}`}>
+            {!games.length && <p className="muted">Nothing yet. First rack's waiting.</p>}
             {[...games].reverse().map((g) => (
               <div className="gamerow" key={g.id}>
-                <span className={g.result === "win" ? "wl-win" : "wl-loss"}>
-                  {g.result === "win" ? "W" : "L"}
-                </span>
+                <span className={g.result === "win" ? "wlWin" : "wlLoss"}>{g.result === "win" ? "W" : "L"}</span>
                 <span>
                   #{g.seq} vs {g.opponents.join(", ")}
                 </span>
@@ -506,17 +490,17 @@ export default function Record() {
                     ? "cutthroat"
                     : `${(g.win_type || "").replace(/_/g, " ")} · loser had ${g.loser_balls_left ?? "?"} · ${g.breaker} broke`}
                 </span>
-                <span style={{ marginLeft: "auto" }}>
+                <span style={{ marginLeft: "auto", whiteSpace: "nowrap" }}>
                   <button onClick={() => editGame(g)}>edit</button>
                   <button onClick={() => removeGame(g)}>delete</button>
                 </span>
               </div>
             ))}
-          </div>
+          </Section>
         </>
       )}
 
-      <p className="footer">
+      <p className="siteFooter" style={{ border: 0, marginTop: 20 }}>
         <a
           href="#/"
           onClick={async (e) => {

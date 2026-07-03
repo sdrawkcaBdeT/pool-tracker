@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { api } from "./api.js";
+import { StatCard } from "./components.jsx";
+import { pct, signedPts } from "./format.js";
 import Dashboard from "./Dashboard.jsx";
 import Record from "./Record.jsx";
 import Sessions from "./Sessions.jsx";
@@ -17,6 +20,7 @@ function parseHash(hash) {
 
 export default function App() {
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
+  const [overall, setOverall] = useState(null);
 
   useEffect(() => {
     const onHash = () => setRoute(parseHash(window.location.hash));
@@ -24,14 +28,18 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  useEffect(() => {
+    api.dashboard("overall").then(setOverall).catch(() => {});
+  }, []);
+
   const navigate = (hash) => {
     window.location.hash = hash;
   };
 
-  const navLink = (hash, label, active) => (
+  const tab = (hash, label, active) => (
     <a
       href={hash}
-      className={active ? "active" : ""}
+      className={active ? "tabActive" : ""}
       onClick={(e) => {
         e.preventDefault();
         navigate(hash);
@@ -43,29 +51,54 @@ export default function App() {
 
   return (
     <div className="shell">
-      <div className="topbar">
-        <a href="#/" className="wordmark" onClick={(e) => { e.preventDefault(); navigate("#/"); }}>
-          Pool Tracker<span>every game since 2017</span>
-        </a>
-        <nav className="nav">
-          {navLink("#/", "Dashboard", route.page === "dashboard")}
-          {navLink("#/sessions", "Sessions", route.page === "sessions")}
-          {navLink("#/story", "Story", route.page === "story")}
-          {navLink("#/record", "Record", route.page === "record")}
-        </nav>
-      </div>
+      <header className="masthead">
+        <p className="mastheadEyebrow">Every game since April 2017</p>
+        <h1>
+          Pool <span className="chalkWord">Tracker</span>
+        </h1>
+        <p className="mastheadSub">
+          I started writing games down at a bar in 2017 because I wanted to know one thing:
+          is breaking actually an advantage? The notebook never stopped. This is all of it, counted.
+        </p>
+      </header>
+
+      {overall && (
+        <div className="statGrid">
+          <StatCard
+            label="The record"
+            value={`${overall.record.wins}–${overall.record.losses}`}
+            detail={`${overall.record.games} games, ${overall.record.first_date.slice(0, 4)} to ${overall.record.last_date.slice(0, 4)}`}
+          />
+          <StatCard label="Win rate" value={pct(overall.record.win_rate)} detail="all games, all opponents" />
+          <StatCard
+            label="Break advantage"
+            value={signedPts(overall.break.advantage)}
+            detail={`${pct(overall.break.me_breaking.win_rate)} breaking, ${pct(overall.break.them_breaking.win_rate)} not`}
+          />
+          <StatCard
+            label="Sessions"
+            value={overall.record.sessions}
+            detail="a session is one day at one table"
+          />
+        </div>
+      )}
+
+      <nav className="tabBar">
+        {tab("#/", "The Ledger", route.page === "dashboard")}
+        {tab("#/sessions", "Sessions", route.page === "sessions")}
+        {tab("#/story", "The Story", route.page === "story")}
+        {tab("#/record", "Record", route.page === "record")}
+      </nav>
 
       {route.page === "dashboard" && <Dashboard scope={route.scope} navigate={navigate} />}
       {route.page === "sessions" && <Sessions navigate={navigate} />}
       {route.page === "story" && <Story />}
       {route.page === "record" && <Record />}
 
-      <p className="footer">
-        Recorded by hand since April 2017 · imported from the original spreadsheet ·{" "}
-        <a href="#/story" onClick={(e) => { e.preventDefault(); navigate("#/story"); }}>
-          the story
-        </a>
-      </p>
+      <footer className="siteFooter">
+        Kept by hand since April 2017. Nine years of bar tables, basements, and lake houses.{" "}
+        <a href="#/story" onClick={(e) => { e.preventDefault(); navigate("#/story"); }}>Read how it started</a>.
+      </footer>
     </div>
   );
 }
