@@ -52,13 +52,13 @@ export default function App() {
   return (
     <div className="shell">
       <header className="masthead">
-        <p className="mastheadEyebrow">Every game since April 2017</p>
+        <p className="mastheadEyebrow">Selected games since April 2017</p>
         <h1>
           Pool <span className="chalkWord">Tracker</span>
         </h1>
         <p className="mastheadSub">
-          I started writing games down at a bar in 2017 because I wanted to know one thing:
-          is breaking actually an advantage? The notebook never stopped. This is all of it, counted.
+          I started writing games down at a bar in 2017 because I wanted to know: is breaking
+          actually an advantage?
         </p>
       </header>
 
@@ -69,7 +69,7 @@ export default function App() {
             value={`${overall.record.wins}–${overall.record.losses}`}
             detail={`${overall.record.games} games, ${overall.record.first_date.slice(0, 4)} to ${overall.record.last_date.slice(0, 4)}`}
           />
-          <StatCard label="Win rate" value={pct(overall.record.win_rate)} detail="all games, all opponents" />
+          <StatCard label="Win rate" value={pct(overall.record.win_rate)} detail="every game in the book" />
           <StatCard
             label="Break advantage"
             value={signedPts(overall.break.advantage)}

@@ -68,9 +68,10 @@ export default function Story() {
             many balls were left on the table. It never really stopped.
           </p>
           <p>
-            Nine years later the spreadsheet hit 610 games, and it outgrew Excel. This site is
-            the same notebook with better plumbing. Every game still gets written down. The math
-            just runs itself now.
+            Nine years later the spreadsheet hit 610 games, and it outgrew Excel. One rule has
+            never changed: not every game gets tracked. If I tell my opponent before the break
+            that it's going in the stats, it goes in the stats, however it ends. This site is
+            the same notebook with better plumbing.
           </p>
         </div>
       </Section>
