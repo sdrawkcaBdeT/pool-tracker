@@ -1,0 +1,15 @@
+# Secrets / per-machine state
+.env
+docker-compose.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local dev database
+data/*.db
+
+# Node / Vite
+node_modules/
+dist/

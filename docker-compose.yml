@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pool}
+      POSTGRES_USER: ${POSTGRES_USER:-pool}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pool}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pool}:${POSTGRES_PASSWORD:-pool}@db:5432/${POSTGRES_DB:-pool}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8000}
+      APP_GIT_SHA: ${APP_GIT_SHA:-}
+      AUTO_IMPORT: ${AUTO_IMPORT:-true}
+      OWNER_PIN: ${OWNER_PIN:-}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      SESSION_DAYS: ${SESSION_DAYS:-90}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).read()\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN:?CF_TUNNEL_TOKEN required in .env}
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
