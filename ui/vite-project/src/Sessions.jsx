@@ -1,12 +1,58 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "./api.js";
-import { Section, WinLoss } from "./components.jsx";
-import { dateLabel } from "./format.js";
+import { Ball, Section, WinLoss } from "./components.jsx";
+import { WIN_TYPE_LABELS, dateLabel } from "./format.js";
+
+function cutthroatSummary(game, me) {
+  const places = game.finish_places || {};
+  const order = Object.keys(places).sort((a, b) => places[a] - places[b]);
+  if (!order.length) return "cutthroat";
+  return `cutthroat · ${order.map((n) => (n === me ? "me" : n)).join(" → ")}`;
+}
+
+function GameRows({ detail }) {
+  return (
+    <div className="gameLog">
+      {detail.games.map((g) => (
+        <div className="gamerow" key={g.id}>
+          <span className={g.result === "win" ? "wlWin" : "wlLoss"}>{g.result === "win" ? "W" : "L"}</span>
+          <span className="muted">#{g.seq}</span>
+          <span>vs {g.opponents.join(", ")}</span>
+          {g.teammates.length ? <span className="meta">with {g.teammates.join(", ")}</span> : null}
+          <span className="meta">
+            {g.game_type === "cutthroat" ? (
+              cutthroatSummary(g, "ted")
+            ) : (
+              <>
+                {WIN_TYPE_LABELS[g.win_type] || g.win_type}
+                {g.loser_balls_left !== null && (
+                  <>
+                    {" · loser had "}
+                    <Ball n={g.loser_balls_left} size={18} />
+                  </>
+                )}
+                {g.winner_balls_left > 0 && (
+                  <>
+                    {", winner "}
+                    <Ball n={g.winner_balls_left} size={18} />
+                  </>
+                )}
+                {g.breaker ? ` · ${g.breaker} broke` : ""}
+              </>
+            )}
+          </span>
+          {g.notes ? <span className="meta gameNote">{g.notes}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Sessions({ navigate }) {
   const [sessions, setSessions] = useState(null);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState({});
 
   useEffect(() => {
     api
@@ -14,6 +60,30 @@ export default function Sessions({ navigate }) {
       .then((payload) => setSessions(payload.sessions))
       .catch((e) => setError(e.message));
   }, []);
+
+  const toggle = async (sessionId) => {
+    setOpen((current) => {
+      if (current[sessionId]) {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      }
+      return { ...current, [sessionId]: current[sessionId] || "loading" };
+    });
+    if (!open[sessionId]) {
+      try {
+        const detail = await api.sessionDetail(sessionId);
+        setOpen((current) => (current[sessionId] ? { ...current, [sessionId]: detail } : current));
+      } catch (e) {
+        setOpen((current) => {
+          const next = { ...current };
+          delete next[sessionId];
+          return next;
+        });
+        setError(e.message);
+      }
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!sessions) return [];
@@ -24,7 +94,7 @@ export default function Sessions({ navigate }) {
     );
   }, [sessions, query]);
 
-  if (error) return <p className="pageError">{error}</p>;
+  if (error && !sessions) return <p className="pageError">{error}</p>;
   if (!sessions) return <p className="muted">Loading…</p>;
 
   const rows = [];
@@ -41,8 +111,8 @@ export default function Sessions({ navigate }) {
   return (
     <Section
       eyebrow="The log"
-      title="Every session"
-      lede={`A session is one day of pool at one table. ${sessions.length} of them so far, newest first.`}
+      title="Every session, every game"
+      lede={`A session is one day of pool at one table. ${sessions.length} of them so far, newest first. Click a session to unfold the games inside it.`}
     >
       <input
         type="text"
@@ -51,10 +121,12 @@ export default function Sessions({ navigate }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      {error && <p className="error">{error}</p>}
       <div className="tableScroller">
         <table>
           <thead>
             <tr>
+              <th style={{ width: 24 }} />
               <th>Date</th>
               <th>Venue</th>
               <th>Games</th>
@@ -66,45 +138,63 @@ export default function Sessions({ navigate }) {
             {rows.map((row) =>
               row.divider ? (
                 <tr key={row.key} className="yearDivider">
-                  <td colSpan={5}>{row.divider}</td>
+                  <td colSpan={6}>{row.divider}</td>
                 </tr>
               ) : (
-                <tr key={row.key}>
-                  <td>{dateLabel(row.session.date)}</td>
-                  <td>
-                    <a
-                      href={`#/at/${encodeURIComponent(row.session.venue)}`}
-                      style={{ color: "inherit" }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        navigate(`#/at/${encodeURIComponent(row.session.venue)}`);
-                      }}
-                    >
-                      {row.session.venue}
-                    </a>
-                  </td>
-                  <td>{row.session.games}</td>
-                  <td>
-                    <WinLoss wins={row.session.wins} losses={row.session.losses} />
-                  </td>
-                  <td>
-                    {row.session.opponents.map((name, i) => (
-                      <React.Fragment key={name}>
-                        {i > 0 && ", "}
-                        <a
-                          href={`#/vs/${encodeURIComponent(name)}`}
-                          style={{ color: "inherit" }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`#/vs/${encodeURIComponent(name)}`);
-                          }}
-                        >
-                          {name}
-                        </a>
-                      </React.Fragment>
-                    ))}
-                  </td>
-                </tr>
+                <React.Fragment key={row.key}>
+                  <tr className="rowClickable" onClick={() => toggle(row.session.session_id)}>
+                    <td className="muted">{open[row.session.session_id] ? "▾" : "▸"}</td>
+                    <td>{dateLabel(row.session.date)}</td>
+                    <td>
+                      <a
+                        href={`#/at/${encodeURIComponent(row.session.venue)}`}
+                        style={{ color: "inherit" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          navigate(`#/at/${encodeURIComponent(row.session.venue)}`);
+                        }}
+                      >
+                        {row.session.venue}
+                      </a>
+                    </td>
+                    <td>{row.session.games}</td>
+                    <td>
+                      <WinLoss wins={row.session.wins} losses={row.session.losses} />
+                    </td>
+                    <td>
+                      {row.session.opponents.map((name, i) => (
+                        <React.Fragment key={name}>
+                          {i > 0 && ", "}
+                          <a
+                            href={`#/vs/${encodeURIComponent(name)}`}
+                            style={{ color: "inherit" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              navigate(`#/vs/${encodeURIComponent(name)}`);
+                            }}
+                          >
+                            {name}
+                          </a>
+                        </React.Fragment>
+                      ))}
+                    </td>
+                  </tr>
+                  {open[row.session.session_id] && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "0 10px 12px 34px" }}>
+                        {open[row.session.session_id] === "loading" ? (
+                          <p className="muted" style={{ margin: "8px 0 0" }}>
+                            Loading…
+                          </p>
+                        ) : (
+                          <GameRows detail={open[row.session.session_id]} />
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               )
             )}
           </tbody>

@@ -23,6 +23,7 @@ export const api = {
   dashboard: (scope) => request(`/api/dashboard?scope=${encodeURIComponent(scope)}`),
   scopes: () => request("/api/scopes"),
   sessions: () => request("/api/sessions"),
+  sessionDetail: (id) => request(`/api/sessions/${id}`),
   story: () => request("/api/story"),
   me: () => request("/api/me"),
   login: (pin) => request("/api/auth/owner-login", { method: "POST", body: JSON.stringify({ pin }) }),

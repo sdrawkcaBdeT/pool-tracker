@@ -62,12 +62,15 @@ export function Meter({ value, label }) {
   );
 }
 
-/* A rendered pool ball. n: 0 = cue ball, 1..8 = that ball. */
+/* A rendered pool ball. n: 0 = cue ball, 1..8 = that ball.
+   Without a size prop, dimensions come from CSS (26px default, 40px in the
+   record form); with one, everything scales inline. */
 export function Ball({ n, size }) {
-  const style = size ? { width: size, height: size } : undefined;
+  const style = size ? { width: size, height: size, fontSize: Math.round(size * 0.45) } : undefined;
+  const innerStyle = size ? { width: Math.round(size * 0.58), height: Math.round(size * 0.58) } : undefined;
   return (
     <span className={`ballIcon ballIcon-${n}`} style={style} aria-label={n === 0 ? "cue ball" : `${n} ball`}>
-      {n > 0 ? <i>{n}</i> : null}
+      {n > 0 ? <i style={innerStyle}>{n}</i> : null}
     </span>
   );
 }
