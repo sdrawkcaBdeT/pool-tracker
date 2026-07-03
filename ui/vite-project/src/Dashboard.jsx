@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "./api.js";
-import { Meter, PillToggle, Section, StatCard, Takeaway, WinLoss } from "./components.jsx";
+import { GameRows, Meter, PillToggle, Section, StatCard, Takeaway, WinLoss } from "./components.jsx";
 import { BreakBars, Columns, MarginHistogram, RollingLine, Stack100 } from "./charts.jsx";
 import {
   WIN_TYPE_COLORS,
@@ -117,6 +117,127 @@ function DetailHeader({ scope, data, navigate }) {
         <span>{types}</span>
       </div>
     </section>
+  );
+}
+
+/* Session rows with click-to-expand game logs, scoped to the current slice.
+   On opponent pages the expansion shows only that opponent's games, with a
+   note about how many others happened the same day. */
+function SessionLog({ sessions, scope, navigate }) {
+  const [open, setOpen] = useState({});
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    setOpen({});
+    setShowAll(false);
+  }, [scope.type, scope.key]);
+
+  const toggle = async (sessionId) => {
+    if (open[sessionId]) {
+      setOpen((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      return;
+    }
+    setOpen((current) => ({ ...current, [sessionId]: "loading" }));
+    try {
+      const detail = await api.sessionDetail(sessionId);
+      setOpen((current) => (current[sessionId] ? { ...current, [sessionId]: detail } : current));
+    } catch {
+      setOpen((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+    }
+  };
+
+  const visible = showAll ? sessions : sessions.slice(0, 5);
+
+  return (
+    <>
+      <div className="tableScroller">
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 24 }} />
+              <th>Date</th>
+              <th>Venue</th>
+              <th>Games</th>
+              <th>Record</th>
+              <th>Opponents</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((s) => {
+              const detail = open[s.session_id];
+              let shown = null;
+              let hidden = 0;
+              if (detail && detail !== "loading") {
+                shown =
+                  scope.type === "opponent"
+                    ? detail.games.filter((g) => g.opponents.includes(scope.key))
+                    : detail.games;
+                hidden = detail.games.length - shown.length;
+              }
+              return (
+                <React.Fragment key={s.session_id}>
+                  <tr className="rowClickable" onClick={() => toggle(s.session_id)}>
+                    <td className="muted">{detail ? "▾" : "▸"}</td>
+                    <td>{dateLabel(s.date)}</td>
+                    <td>{s.venue}</td>
+                    <td>{s.games}</td>
+                    <td>
+                      <WinLoss wins={s.wins} losses={s.losses} />
+                    </td>
+                    <td>{s.opponents.join(", ")}</td>
+                  </tr>
+                  {detail && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "0 10px 12px 34px" }}>
+                        {detail === "loading" ? (
+                          <p className="muted" style={{ margin: "8px 0 0" }}>
+                            Loading…
+                          </p>
+                        ) : (
+                          <>
+                            <GameRows games={shown} />
+                            {hidden > 0 && (
+                              <p className="muted" style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
+                                {hidden} more game{hidden === 1 ? "" : "s"} that day against someone
+                                else, in the{" "}
+                                <a
+                                  href="#/sessions"
+                                  style={{ color: "inherit" }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    navigate("#/sessions");
+                                  }}
+                                >
+                                  full log
+                                </a>
+                                .
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {sessions.length > 5 && !showAll && (
+        <button type="button" className="backButton" onClick={() => setShowAll(true)}>
+          Show all {sessions.length} sessions
+        </button>
+      )}
+    </>
   );
 }
 
@@ -458,38 +579,16 @@ export default function Dashboard({ scope, navigate }) {
           )}
 
           <Section
-            eyebrow="Recent play"
-            title="Last few sessions"
+            eyebrow="The log"
+            title="Session by session"
+            lede="Click a session to unfold the game-by-game."
             action={
               <a className="buttonLink" href="#/sessions" onClick={(e) => { e.preventDefault(); navigate("#/sessions"); }}>
-                Full session log
+                Searchable log
               </a>
             }
           >
-            <div className="tableScroller">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Venue</th>
-                    <th>Record</th>
-                    <th>Opponents</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recent_sessions.map((s) => (
-                    <tr key={s.session_id}>
-                      <td>{dateLabel(s.date)}</td>
-                      <td>{s.venue}</td>
-                      <td>
-                        <WinLoss wins={s.wins} losses={s.losses} />
-                      </td>
-                      <td>{s.opponents.join(", ")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <SessionLog sessions={data.sessions} scope={scope} navigate={navigate} />
           </Section>
 
           {isOverall && (

@@ -1,4 +1,5 @@
 import React from "react";
+import { WIN_TYPE_LABELS } from "./format.js";
 
 export function Section({ eyebrow, title, lede, action, children }) {
   return (
@@ -80,5 +81,52 @@ export function WinLoss({ wins, losses }) {
     <span className={wins >= losses ? "wlWin" : "wlLoss"}>
       {wins}–{losses}
     </span>
+  );
+}
+
+function cutthroatSummary(game, me) {
+  const places = game.finish_places || {};
+  const order = Object.keys(places).sort((a, b) => places[a] - places[b]);
+  if (!order.length) return "cutthroat";
+  return `cutthroat · ${order.map((n) => (n === me ? "me" : n)).join(" → ")}`;
+}
+
+/* The game-by-game log for one session, shared by the session log page and
+   the scoped dashboard panel. */
+export function GameRows({ games, me = "ted" }) {
+  return (
+    <div className="gameLog">
+      {games.map((g) => (
+        <div className="gamerow" key={g.id}>
+          <span className={g.result === "win" ? "wlWin" : "wlLoss"}>{g.result === "win" ? "W" : "L"}</span>
+          <span className="muted">#{g.seq}</span>
+          <span>vs {g.opponents.join(", ")}</span>
+          {g.teammates.length ? <span className="meta">with {g.teammates.join(", ")}</span> : null}
+          <span className="meta">
+            {g.game_type === "cutthroat" ? (
+              cutthroatSummary(g, me)
+            ) : (
+              <>
+                {WIN_TYPE_LABELS[g.win_type] || g.win_type}
+                {g.loser_balls_left !== null && (
+                  <>
+                    {" · loser had "}
+                    <Ball n={g.loser_balls_left} size={18} />
+                  </>
+                )}
+                {g.winner_balls_left > 0 && (
+                  <>
+                    {", winner "}
+                    <Ball n={g.winner_balls_left} size={18} />
+                  </>
+                )}
+                {g.breaker ? ` · ${g.breaker} broke` : ""}
+              </>
+            )}
+          </span>
+          {g.notes ? <span className="meta gameNote">{g.notes}</span> : null}
+        </div>
+      ))}
+    </div>
   );
 }

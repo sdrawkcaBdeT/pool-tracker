@@ -297,7 +297,7 @@ def build_dashboard(rows: list[LogRow], scope_type: str, key: str | None) -> dic
         "margins": _margins(eight_ball),
         "break": _break_stats(eight_ball),
         "by_year": _by_year(scoped),
-        "recent_sessions": _sessions(scoped)[:5],
+        "sessions": _sessions(scoped),
         "cutthroat": _cutthroat(scoped),
     }
 

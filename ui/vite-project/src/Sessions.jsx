@@ -1,52 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "./api.js";
-import { Ball, Section, WinLoss } from "./components.jsx";
-import { WIN_TYPE_LABELS, dateLabel } from "./format.js";
-
-function cutthroatSummary(game, me) {
-  const places = game.finish_places || {};
-  const order = Object.keys(places).sort((a, b) => places[a] - places[b]);
-  if (!order.length) return "cutthroat";
-  return `cutthroat · ${order.map((n) => (n === me ? "me" : n)).join(" → ")}`;
-}
-
-function GameRows({ detail }) {
-  return (
-    <div className="gameLog">
-      {detail.games.map((g) => (
-        <div className="gamerow" key={g.id}>
-          <span className={g.result === "win" ? "wlWin" : "wlLoss"}>{g.result === "win" ? "W" : "L"}</span>
-          <span className="muted">#{g.seq}</span>
-          <span>vs {g.opponents.join(", ")}</span>
-          {g.teammates.length ? <span className="meta">with {g.teammates.join(", ")}</span> : null}
-          <span className="meta">
-            {g.game_type === "cutthroat" ? (
-              cutthroatSummary(g, "ted")
-            ) : (
-              <>
-                {WIN_TYPE_LABELS[g.win_type] || g.win_type}
-                {g.loser_balls_left !== null && (
-                  <>
-                    {" · loser had "}
-                    <Ball n={g.loser_balls_left} size={18} />
-                  </>
-                )}
-                {g.winner_balls_left > 0 && (
-                  <>
-                    {", winner "}
-                    <Ball n={g.winner_balls_left} size={18} />
-                  </>
-                )}
-                {g.breaker ? ` · ${g.breaker} broke` : ""}
-              </>
-            )}
-          </span>
-          {g.notes ? <span className="meta gameNote">{g.notes}</span> : null}
-        </div>
-      ))}
-    </div>
-  );
-}
+import { GameRows, Section, WinLoss } from "./components.jsx";
+import { dateLabel } from "./format.js";
 
 export default function Sessions({ navigate }) {
   const [sessions, setSessions] = useState(null);
@@ -189,7 +144,7 @@ export default function Sessions({ navigate }) {
                             Loading…
                           </p>
                         ) : (
-                          <GameRows detail={open[row.session.session_id]} />
+                          <GameRows games={open[row.session.session_id].games} />
                         )}
                       </td>
                     </tr>
